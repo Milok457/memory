@@ -1,0 +1,9 @@
+version: "3.9"
+
+services:
+  memory:
+    image: milok457/memory-2026
+    container_name: memory-container
+    ports:
+      - "80:80"
+    restart: unless-stopped
