@@ -1,0 +1,64 @@
+name: Memory Pipeline
+
+on:
+  push:
+    branches:
+      - develop
+
+jobs:
+  test-memory-2026:
+    runs-on: self-hosted
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Vérifier les fichiers jpg et les remplacer
+        run: |
+          for f in $(find . -type f -name "*.jpg"); do
+            echo "Vérification du fichier $f"
+            if ! file "$f" | grep -q "JPG image data"; then
+              echo "$f est corrompu. Remplacement..."
+              cp conf/default.jpg "$f"
+            else
+              echo "$f est valide"
+            fi
+          done
+
+  build-memory-2026:
+    runs-on: self-hosted
+    needs: test-memory-2026
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Build Docker image
+        run: |
+          docker build -t milok457/memory-2026 .
+
+  push-memory-2026:
+    runs-on: self-hosted
+    needs: build-memory-2026
+    steps:
+      - name: Login to DockerHub
+        run: |
+          echo "${{ secrets.DOCKERHUB_PASSWORD }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+
+      - name: Push Docker image
+        run: |
+          docker push milok457/memory-2026
+
+  deploy-memory-2026:
+    runs-on: self-hosted
+    needs: push-memory-2026
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.1.0
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          password: ${{ secrets.DEPLOY_PASSWORD }}
+          script: |
+            docker pull milok457/memory-2026
+            docker stop memory-container || true
+            docker rm memory-container || true
+            docker run -d -p 80:80 --name memory-container milok457/memory-2026
