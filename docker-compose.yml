@@ -5,5 +5,5 @@ services:
     image: milok457/memory-2026
     container_name: memory-container
     ports:
-      - "8080:80"
+      - "80:80"
     restart: unless-stopped
